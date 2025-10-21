@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>길드 레이드 파티 일정</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background-color: #1c1c2e;
+  color: #fff;
+  padding: 20px;
+  font-size: 1.1em;
+}
+
+h1 { color: #ffa500; font-size: 2em; }
+
+input, select, button {
+  padding: 8px;
+  margin: 5px;
+  font-size: 1.1em;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+  table-layout: fixed;
+}
+
+th, td {
+  border: 1px solid #555;
+  padding: 14px;
+  text-align: center;
+  vertical-align: middle;
+  word-wrap: break-word;
+  font-size: 1.2em;
+}
+
+th:nth-child(1), td:nth-child(1) { width: 12%; }
+th:nth-child(2), td:nth-child(2) { width: 10%; }
+th:nth-child(3), td:nth-child(3) { width: 12%; }
+th:nth-child(4), td:nth-child(4) { width: 12%; }
+th:nth-child(5), td:nth-child(5) { width: 42%; }
+th:nth-child(6), td:nth-child(6) { width: 6%; }
+th:nth-child(7), td:nth-child(7) { width: 6%; }
+
+th { background-color: #333; }
+tr:nth-child(even) { background-color: #2e2e3e; }
+
+.join-btn { background-color: #4CAF50; color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 4px; }
+.delete-btn { background-color: #ff4444; color: white; border: none; cursor: pointer; padding: 8px 16px; border-radius: 4px; }
+.leave-btn { background-color: #ff9444; color: #222; border: none; cursor: pointer; padding: 4px 8px; margin-left: 5px; font-size: 0.9em; border-radius: 4px; }
+
+.user-inputs label { margin-left: 10px; }
+
+.participants-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); 
+  grid-template-rows: repeat(4, 60px);   /* 각 행 높이 고정 */
+  gap: 6px 10px;
+  text-align: left;
+  width: 100%;
+}
+
+.participant {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  background-color: #3a3a5a;
+  padding: 8px 10px;    /* 패딩 늘림 */
+  border-radius: 4px;
+  color: #fff;
+  font-size: 1.1em;     /* 글씨 크기 키움 */
+  font-weight: bold;     /* 강조 */
+  word-break: break-word;
+  height: 100%;          /* 칸 높이 꽉 채우기 */
+}
+
+@media (max-width: 768px) {
+  table, thead, tbody, th, td, tr { display: block; }
+  th { text-align: left; }
+  td { text-align: left; }
+  tr { margin-bottom: 10px; }
+  .participants-list { grid-template-columns: 1fr; grid-template-rows: auto; }
+}
+</style>
+</head>
+<body>
+<h1>🔥 길드 레이드 파티 일정</h1>
+
+<div class="user-inputs">
+  <label>닉네임:</label>
+  <input type="text" id="userName" placeholder="내 닉네임" />
+  <label>레벨:</label>
+  <input type="number" id="userLevel" placeholder="레벨" min="1" max="1700" />
+  <label>역할군:</label>
+  <select id="userRole">
+    <option value="딜러">딜러</option>
+    <option value="서폿">서폿</option>
+  </select>
+  <label>직업:</label>
+  <select id="userJob"></select>
+</div>
+
+<div>
+  <label>레이드 종류:</label>
+  <select id="raidCategory" onchange="onRaidCategoryChange()">
+    <optgroup label="군단장 레이드">
+      <option value="발탄">발탄</option>
+      <option value="비아키스">비아키스</option>
+      <option value="쿠크세이튼">쿠크세이튼</option>
+      <option value="아브렐슈드">아브렐슈드</option>
+    </optgroup>
+    <optgroup label="던전">
+      <option value="카양겔">카양겔</option>
+      <option value="상아탑">상아탑</option>
+    </optgroup>
+    <optgroup label="카제로스 레이드">
+      <option value="베히모스">베히모스</option>
+      <option value="서막">서막</option>
+      <option value="1막">1막</option>
+      <option value="2막">2막</option>
+      <option value="3막">3막</option>
+      <option value="4막">4막</option>
+      <option value="종막">종막</option>
+      <option value="80노노하">80노노하</option>
+    </optgroup>
+  </select>
+
+  <label>난이도:</label>
+  <select id="difficulty">
+    <option value="노말">노말</option>
+    <option value="하드">하드</option>
+    <option value="헬">헬</option>
+  </select>
+
+  <label>날짜:</label>
+  <input type="date" id="raidDate" />
+  <label>시간:</label>
+  <input type="time" id="raidTime" />
+  <button onclick="createRaid()">레이드 생성</button>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>레이드</th>
+      <th>난이도</th>
+      <th>날짜</th>
+      <th>시간</th>
+      <th>참여자</th>
+      <th>참여</th>
+      <th>파티 해체</th>
+    </tr>
+  </thead>
+  <tbody id="raidTableBody"></tbody>
+</table>
+
+<script>
+const allJobs = ["버서커","디스트로이어","워로드","홀리나이트","건슬링어","데빌헌터","호크아이","스카우터","블래스터","소서리스","서머너","아르카나","바드","기공사","인파이터","창술사","배틀마스터","격투가","도화가","리퍼","소울이터","발키리","용기사","환수사","기상술사","슬레이어"];
+const supportJobs = ["발키리","바드","도화가","홀리나이트"];
+
+const roleSelect = document.getElementById("userRole");
+const jobSelect = document.getElementById("userJob");
+const raidCategorySelect = document.getElementById("raidCategory");
+const difficultySelect = document.getElementById("difficulty");
+const raidTableBody = document.getElementById("raidTableBody");
+
+function updateJobOptions() {
+  const selectedRole = roleSelect.value;
+  let jobs = selectedRole === "서폿" ? supportJobs.slice() : allJobs.slice();
+  jobs.sort((a,b)=>a.localeCompare(b,"ko"));
+  jobSelect.innerHTML = `<option value="">직업 선택</option>`;
+  jobs.forEach(job=>{
+    const option = document.createElement("option");
+    option.value = job;
+    option.textContent = job;
+    jobSelect.appendChild(option);
+  });
+}
+roleSelect.addEventListener("change", updateJobOptions);
+window.onload = () => { updateJobOptions(); loadRaids(); };
+
+function onRaidCategoryChange() {
+  const selected = raidCategorySelect.value;
+  if (selected==="80노노하"){difficultySelect.disabled=true; difficultySelect.value="";}
+  else {difficultySelect.disabled=false; if(!difficultySelect.value) difficultySelect.value="노말";}
+}
+
+function getKoreanDayName(dateStr){ const days=["일","월","화","수","목","금","토"]; return days[new Date(dateStr).getDay()]; }
+
+function loadRaids(){
+  const raids=JSON.parse(localStorage.getItem("raids"))||[];
+  raids.sort((a,b)=>new Date(`${a.date}T${a.time}`)-new Date(`${b.date}T${b.time}`));
+  raidTableBody.innerHTML="";
+  raids.forEach((raid,index)=>{
+    const displayDate = `${raid.date} (${getKoreanDayName(raid.date)})`;
+    const participantsTd = document.createElement("td");
+    participantsTd.className="participants-list";
+    renderParticipants(raid.members, participantsTd);
+    const row = document.createElement("tr");
+    row.innerHTML=`
+      <td>${raid.name}</td>
+      <td>${raid.difficulty||"-"}</td>
+      <td>${displayDate}</td>
+      <td>${raid.time}</td>
+      <td></td>
+      <td><button class="join-btn" onclick="joinRaid(${index})">참여</button></td>
+      <td><button class="delete-btn" onclick="confirmDeleteRaid(${index})">파티 해체</button></td>`;
+    row.children[4].replaceWith(participantsTd);
+    raidTableBody.appendChild(row);
+  });
+  localStorage.setItem("raids", JSON.stringify(raids));
+}
+
+function renderParticipants(members, container){
+  container.innerHTML = "";
+  const dealers = members.filter(m => m.role !== "서폿").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+  const supports = members.filter(m => m.role === "서폿").sort((a,b)=>a.name.localeCompare(b.name,"ko"));
+
+  for(let row=0; row<4; row++){
+    const first = dealers.shift() || null;
+    const second = supports.shift() || dealers.shift() || null;
+
+    container.appendChild(first ? createParticipantSpan(first) : createEmptySpan());
+    container.appendChild(second ? createParticipantSpan(second) : createEmptySpan());
+  }
+}
+
+function createParticipantSpan(member){
+  const span=document.createElement("span");
+  span.className="participant";
+  span.textContent=`${member.name}(${member.level}/${member.role}/${member.job})`;
+  const leaveBtn=document.createElement("button");
+  leaveBtn.textContent="탈퇴";
+  leaveBtn.className="leave-btn";
+  leaveBtn.onclick=()=>{
+    const raids=JSON.parse(localStorage.getItem("raids"))||[];
+    raids.forEach(r=>{ r.members=r.members.filter(m=>m.name!==member.name); });
+    localStorage.setItem("raids",JSON.stringify(raids));
+    loadRaids();
+  };
+  span.appendChild(leaveBtn);
+  return span;
+}
+
+function createEmptySpan(){
+  const span = document.createElement("span");
+  span.className = "participant";
+  span.style.backgroundColor = "#2e2e3e";
+  span.innerHTML = "&nbsp;";
+  return span;
+}
+
+function createRaid(){
+  const userName=document.getElementById("userName").value.trim();
+  const level=parseInt(document.getElementById("userLevel").value.trim());
+  const role=document.getElementById("userRole").value;
+  const job=document.getElementById("userJob").value;
+  const name=raidCategorySelect.value;
+  const difficulty=difficultySelect.disabled?"":difficultySelect.value;
+  const date=document.getElementById("raidDate").value;
+  const time=document.getElementById("raidTime").value;
+  if(!userName||!level||!role||!job||!name||!date||!time){alert("모든 정보를 입력하세요!"); return;}
+  const raids=JSON.parse(localStorage.getItem("raids"))||[];
+  raids.push({name,difficulty,date,time,members:[{name:userName,level,role,job}]});
+  localStorage.setItem("raids",JSON.stringify(raids));
+  loadRaids();
+}
+
+function joinRaid(index){
+  const userName=document.getElementById("userName").value.trim();
+  const level=parseInt(document.getElementById("userLevel").value.trim());
+  const role=document.getElementById("userRole").value;
+  const job=document.getElementById("userJob").value;
+  if(!userName||!level||!role||!job){alert("닉네임, 레벨, 역할군, 직업을 모두 입력해주세요!"); return;}
+  const raids=JSON.parse(localStorage.getItem("raids"))||[];
+  const raid=raids[index];
+  if(raid.members.some(m=>m.name===userName)){alert("이미 참여중입니다."); return;}
+  if(raid.members.length>=8){alert("인원이 가득 찼습니다."); return;}
+  raid.members.push({name:userName,level,role,job});
+  localStorage.setItem("raids",JSON.stringify(raids));
+  loadRaids();
+}
+
+function confirmDeleteRaid(index){ if(confirm("해당 레이드를 삭제하시겠습니까?")) deleteRaid(index);}
+function deleteRaid(index){ const raids=JSON.parse(localStorage.getItem("raids"))||[]; raids.splice(index,1); localStorage.setItem("raids",JSON.stringify(raids)); loadRaids();}
+</script>
+</body>
+</html>
